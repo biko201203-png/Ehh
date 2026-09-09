@@ -1,0 +1,32 @@
+name: Build BONELAB Mod
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Download BONELAB & MelonLoader References
+      run: |
+        curl -L -o refs.zip "https://github.com"
+        powershell Expand-Archive refs.zip -DestinationPath Refs
+
+    - name: Compile Mod DLL
+      run: |
+        msbuild /p:Configuration=Release /p:ReferencePath=./Refs PlayerStatViewer.cs /t:Build /p:OutputType=Library /p:OutputPath=./build
+
+    - name: Upload Finished DLL
+      uses: actions/upload-artifact@v4
+      with:
+        name: Compiled-Mod-DLL
+        path: ./build/*.dll
