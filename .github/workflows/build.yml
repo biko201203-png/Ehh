@@ -13,28 +13,36 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'
+
     - name: Download BONELAB & MelonLoader References
       run: |
         curl -L -o refs.zip "https://github.com"
         powershell Expand-Archive refs.zip -DestinationPath Refs
 
-    - name: Compile Mod DLL
+    - name: Auto-Generate Project File
       run: |
-        New-Item -ItemType Directory -Force -Path .\build
-        
-        # Locate the highest version of .NET Framework available to find the compiler
-        $cscPath = Get-ChildItem "C:\Windows\Microsoft.NET\Framework64\v4.0.*" | 
-                    Select-Object -First 1 | 
-                    ForEach-Object { Join-Path $_.FullName "csc.exe" }
-        
-        if (-not (Test-Path $cscPath)) {
-            Write-Error "Could not find csc.exe compiler path!"
-            exit 1
-        }
-        
-        Write-Output "Using compiler: $cscPath"
-        & $cscPath /target:library /out:build/PlayerStatViewer.dll /reference:Refs\*.dll PlayerStatViewer.cs
+        # This dynamically creates the exact project settings file the system needs
+        $projectXml = @"
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <TargetFramework>net6.0</TargetFramework>
+            <ImplicitUsings>enable</ImplicitUsings>
+            <Nullable>enable</Nullable>
+          </PropertyGroup>
+          <ItemGroup>
+            <Reference Include="Refs\*.dll" />
+          </ItemGroup>
+        </Project>
+        "@
+        Set-Content -Path "Mod.csproj" -Value $projectXml
       shell: powershell
+
+    - name: Compile Mod DLL
+      run: dotnet build Mod.csproj --configuration Release --output ./build
 
     - name: Upload Finished DLL
       uses: actions/upload-artifact@v4
