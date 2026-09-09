@@ -13,8 +13,10 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'
 
     - name: Download BONELAB & MelonLoader References
       run: |
@@ -23,7 +25,9 @@ jobs:
 
     - name: Compile Mod DLL
       run: |
-        msbuild /p:Configuration=Release /p:ReferencePath=./Refs PlayerStatViewer.cs /t:Build /p:OutputType=Library /p:OutputPath=./build
+        mkdir build
+        csc /target:library /out:build/PlayerStatViewer.dll /reference:Refs\*.dll PlayerStatViewer.cs
+      shell: cmd
 
     - name: Upload Finished DLL
       uses: actions/upload-artifact@v4
