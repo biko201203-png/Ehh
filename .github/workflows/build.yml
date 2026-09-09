@@ -13,9 +13,6 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
-
     - name: Download BONELAB & MelonLoader References
       run: |
         curl -L -o refs.zip "https://github.com"
@@ -23,6 +20,24 @@ jobs:
 
     - name: Compile Mod DLL
       run: |
-        mkdir build
-        csc.exe /target:library /out:build/PlayerStatViewer.dll /reference:Refs\*.dll PlayerStatViewer.cs
-      shell: cmd
+        New-Item -ItemType Directory -Force -Path .\build
+        
+        # Locate the highest version of .NET Framework available to find the compiler
+        $cscPath = Get-ChildItem "C:\Windows\Microsoft.NET\Framework64\v4.0.*" | 
+                    Select-Object -First 1 | 
+                    ForEach-Object { Join-Path $_.FullName "csc.exe" }
+        
+        if (-not (Test-Path $cscPath)) {
+            Write-Error "Could not find csc.exe compiler path!"
+            exit 1
+        }
+        
+        Write-Output "Using compiler: $cscPath"
+        & $cscPath /target:library /out:build/PlayerStatViewer.dll /reference:Refs\*.dll PlayerStatViewer.cs
+      shell: powershell
+
+    - name: Upload Finished DLL
+      uses: actions/upload-artifact@v4
+      with:
+        name: Compiled-Mod-DLL
+        path: ./build/*.dll
